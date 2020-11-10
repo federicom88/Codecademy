@@ -1,0 +1,160 @@
+-- Task 1: feel of the Quiz Funnel table
+SELECT *
+FROM survey
+LIMIT 10;
+/*
+SELECT COUNT (DISTINCT user_id) AS "Unique Users"
+FROM survey;
+-- Query to now the distinct number of users = 500
+*/
+-- Task 2: analyze how many users move from Question 1 to Question 2, etc
+SELECT question, 
+  COUNT (DISTINCT user_id) AS "Unique Users"
+FROM survey
+GROUP BY 1;
+/*
+Question 1 - 500 -> % Completing the question: 100%
+Question 2 - 475 -> % Completing the question: 95%
+Question 3 - 380 -> % Completing the question: 76%
+Question 4 - 361 -> % Completing the question: 72,2%
+Question 5 - 270 -> % Completing the question: 54%
+*/
+-- Task 3: which question(s) of the quiz have a lower completion rates? What do you think is the reason?
+-- Task 4: examine the first five rows of each table composing the HTO Funnel 
+SELECT *
+FROM quiz
+LIMIT 5;
+SELECT *
+FROM home_try_on 
+LIMIT 5;
+SELECT *
+FROM purchase
+LIMIT 5; 
+-- Task 5: creation of the HTO Funnel table
+WITH hto_funnel_10 AS (
+	SELECT DISTINCT q.user_id, 
+	-- user has taken part to hto
+	h.user_id IS NOT NULL AS 'is_home_try_on', 
+	h.number_of_pairs AS 'n_pairs',
+	-- user has purchased
+	p.user_id IS NOT NULL AS 'is_purchase' 
+	FROM quiz q
+	LEFT JOIN home_try_on h
+	ON q.user_id = h.user_id
+	LEFT JOIN purchase p
+	ON p.user_id = q.user_id
+	LIMIT 10)
+SELECT user_id, 
+-- Clarifed if user has taken part to HTO
+CASE 
+	WHEN is_home_try_on = 1 THEN "Yes" ELSE "No"
+	END AS "part_of_hto", 
+-- Clarifed, if user has taken part to HTO, the number of pairs received
+CASE 
+	WHEN n_pairs IS NULL THEN "Not applicable" ELSE n_pairs
+	END AS "pairs_given",
+-- Clarifed, if user has taken part to HTO, if she has eventually purchased
+CASE 
+	WHEN is_purchase = 1 THEN "Yes" ELSE "No"
+	END AS "purchased"
+FROM hto_funnel_10;
+-- Task 6.1: Overall and intermediate conversion rate
+WITH hto_funnel AS (
+SELECT DISTINCT q.user_id, 
+   h.user_id IS NOT NULL AS 'is_home_try_on', 
+   h.number_of_pairs AS 'n_pairs',
+   p.user_id IS NOT NULL AS 'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+SELECT 
+COUNT (DISTINCT user_id) AS "n_users", 
+SUM (is_home_try_on) AS "n_hto" ,-- it is the sum of records where is_home_try_on was successful ie = 1
+/* in alternative
+COUNT (CASE 
+WHEN is_home_try_on = 1 THEN "1" END) AS "hto_success"
+*/
+SUM (is_purchase) AS "n_purch",
+/* in alternative
+COUNT (CASE 
+WHEN is_purchase = 1 THEN "1" END) AS "purch_success"
+*/
+1.0* SUM (is_purchase)/ COUNT (DISTINCT user_id) AS "over_conv_rate",
+1.0* SUM (is_home_try_on)/ COUNT (DISTINCT user_id) AS "hto/quiz_succ_rate",
+1.0* SUM (is_purchase)/ SUM (is_home_try_on) AS "purch/hto_succ_rate"
+FROM hto_funnel;
+-- Task 6.2: A/B test conversion rate
+WITH hto_funnel AS (
+SELECT DISTINCT q.user_id, 
+   h.user_id IS NOT NULL AS 'is_home_try_on', 
+   h.number_of_pairs AS 'n_pairs',
+   p.user_id IS NOT NULL AS 'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+SELECT SUM (is_home_try_on) AS "n_hto_groupA_3pairs",
+SUM (is_purchase) AS "n_purch_groupA_3pairs",
+ROUND (1.0* SUM (is_purchase) / SUM (is_home_try_on),2) AS "groupA_conv_rate"
+FROM hto_funnel
+WHERE n_pairs = '3 pairs';
+WITH hto_funnel AS (
+SELECT DISTINCT q.user_id, 
+   h.user_id IS NOT NULL AS 'is_home_try_on', 
+   h.number_of_pairs AS 'n_pairs',
+   p.user_id IS NOT NULL AS 'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+SELECT SUM (is_home_try_on) AS "n_hto_groupB_5pairs",
+SUM (is_purchase) AS "n_purch_groupB_5pairs",
+ROUND (1.0* SUM (is_purchase) / SUM (is_home_try_on),2) AS "groupB_conv_rate"
+FROM hto_funnel
+WHERE n_pairs = '5 pairs';
+-- Task 6.3: Stastics
+-- Quiz table
+SELECT style, COUNT (style) AS "Total_occurences", 
+1.0* COUNT (style)/1000 AS "%_Total_occurences"
+FROM quiz
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT fit, COUNT (fit) AS "Total_occurences",
+1.0* COUNT (fit)/(SELECT COUNT(*) FROM quiz) AS "%_Total_occurences"
+FROM quiz
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT shape, COUNT (shape) AS "Total_occurences",
+1.0* COUNT (shape)/(SELECT COUNT(*) FROM quiz) AS "%_Total_occurences"
+FROM quiz
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT color, COUNT (color) AS "Total_occurences",
+1.0* COUNT (color)/(SELECT COUNT(*) FROM quiz) AS "%_Total_occurences"
+FROM quiz
+GROUP BY 1
+ORDER BY 2 DESC;
+-- Purchase table
+SELECT style, COUNT (style) AS "Total_occurences", 
+ROUND (1.0* COUNT (style)/(SELECT COUNT(*) FROM purchase), 2) AS "%_Total_occurences"
+FROM purchase
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT model_name, COUNT (model_name) AS "Total_occurences",
+ROUND (1.0* COUNT (model_name)/(SELECT COUNT(*) FROM purchase), 2) AS "%_Total_occurences"
+FROM purchase
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT color, COUNT (color) AS "Total_occurences",
+ROUND (1.0* COUNT (color)/(SELECT COUNT(*) FROM purchase), 2) AS "%_Total_occurences"
+FROM purchase
+GROUP BY 1
+ORDER BY 2 DESC;
+SELECT MIN(price) AS "Min_puch_price", 
+MAX(price) AS "Max_puch_price",
+ROUND(AVG(price),2) AS "Avg_puch_price"
+FROM purchase;
