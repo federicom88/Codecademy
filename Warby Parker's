@@ -155,6 +155,6 @@ FROM purchase
 GROUP BY 1
 ORDER BY 2 DESC;
 SELECT MIN(price) AS "Min_purch_price", 
-MAX(price) AS "Max_puch_price",
+MAX(price) AS "Max_purch_price",
 ROUND(AVG(price),2) AS "Avg_purch_price"
 FROM purchase;
