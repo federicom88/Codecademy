@@ -154,7 +154,7 @@ ROUND (1.0* COUNT (color)/(SELECT COUNT(*) FROM purchase), 2) AS "%_Total_occure
 FROM purchase
 GROUP BY 1
 ORDER BY 2 DESC;
-SELECT MIN(price) AS "Min_puch_price", 
+SELECT MIN(price) AS "Min_purch_price", 
 MAX(price) AS "Max_puch_price",
-ROUND(AVG(price),2) AS "Avg_puch_price"
+ROUND(AVG(price),2) AS "Avg_purch_price"
 FROM purchase;
